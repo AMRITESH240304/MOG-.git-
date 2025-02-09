@@ -4,6 +4,7 @@
 #include <string>
 #include <zlib.h>
 #include <vector>
+#include "sha1.hpp"
 
 std::vector<char> decompresses_file(const std::string& filename) {
     std::ifstream file(filename, std::ios::binary);
@@ -124,6 +125,64 @@ int main(int argc, char *argv[])
         // std::cout<<content_start<<std::endl;
         std::cout.write(decompressed.data() + content_start, decompressed.size() - content_start);
 
+    }
+    else if(command == "hash-object"){
+        // std::cout<<"Not implemented yet\n";
+        if(argc < 4 || std::string(argv[2]) != "-w"){
+            std::cerr<<"Invalid parameters for hash-object command.\n";
+            return EXIT_FAILURE;
+        }
+
+        std::string filename = argv[3];
+
+        std::ifstream file(filename, std::ios::binary);
+        if(!file.is_open()){
+            std::cerr<<"Failed to open file "<<filename<<std::endl;
+            return EXIT_FAILURE;
+        }
+
+        std::vector<char> content(
+            (std::istreambuf_iterator<char>(file)),
+            std::istreambuf_iterator<char>()
+        );
+        std::string header = "blob " + std::to_string(content.size()) + '\0';
+
+        const std::string input = header + std::string(content.begin(), content.end());
+
+        SHA1 checksum;
+        checksum.update(input);
+        const std::string hash = checksum.final();
+        // std::cout<<hash<<std::endl;
+
+        uLongf compressed_size = compressBound(input.size());
+        // std::cout<<compressed_size<<std::endl;
+        std::vector<char> compressed_data(compressed_size);
+        
+        int result = compress(
+            (Bytef*)compressed_data.data(),
+            &compressed_size,
+            (Bytef*)input.data(),
+            input.size()
+        );
+        
+        if (result != Z_OK) {
+            std::cerr << "Compression failed with error code: " << result << std::endl;
+            return EXIT_FAILURE;
+        }
+        
+        std::string object_path = ".git/objects/" + hash.substr(0,2) + "/" + hash.substr(2);
+        std::filesystem::create_directories(".git/objects/" + hash.substr(0,2));
+        std::ofstream object_file(object_path, std::ios::binary);
+        if(!object_file.is_open()){
+            std::cerr<<"Failed to create object file "<<object_path<<std::endl;
+            return EXIT_FAILURE;
+        }
+
+        // std::cout<<compressed_data.data()<<std::endl;
+
+        object_file.write(compressed_data.data(), compressed_size);
+        std::cout.write(hash.data(), hash.size());
+        object_file.close();
     }
     else {
         std::cerr << "Unknown command " << command << '\n';
