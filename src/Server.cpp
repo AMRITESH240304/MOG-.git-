@@ -2,6 +2,36 @@
 #include <filesystem>
 #include <fstream>
 #include <string>
+#include <zlib.h>
+#include <vector>
+
+std::vector<char> decompresses_file(const std::string& filename) {
+    std::ifstream file(filename, std::ios::binary);
+    std::vector<char> compressed_data(
+        (std::istreambuf_iterator<char>(file)),
+        std::istreambuf_iterator<char>()
+    );
+    
+    // Prepare output buffer
+    std::vector<char> decompressed_data(compressed_data.size() * 4);
+    uLongf decompressed_size = decompressed_data.size();
+    
+    // Decompress
+    int result = uncompress(
+        (Bytef*)decompressed_data.data(),
+        &decompressed_size,
+        (Bytef*)compressed_data.data(),
+        compressed_data.size()
+    );
+
+    if (result != Z_OK) {
+        std::cerr << "Decompression failed\n";
+        exit(EXIT_FAILURE);
+    }
+    
+    decompressed_data.resize(decompressed_size);
+    return decompressed_data;
+}
 
 int main(int argc, char *argv[])
 {
@@ -72,7 +102,30 @@ int main(int argc, char *argv[])
             std::cerr << e.what() << '\n';
             return EXIT_FAILURE;
         }
-    } else {
+    }
+    else if(command == "cat-file"){
+        if (argc < 4 || std::string(argv[2]) != "-p") {
+            std::cerr << "Invalid parameters for cat-file command.\n";
+            return EXIT_FAILURE;
+        }
+
+        std::string blob_hash = argv[3];
+        // std::cout<<blob_hash<<std::endl;
+        std::string object_path = ".git/objects/" + blob_hash.substr(0,2) + "/" + blob_hash.substr(2);
+
+        std::vector<char> decompressed = decompresses_file(object_path);
+        size_t content_start = 0;
+        for (size_t i = 0; i < decompressed.size(); i++) {
+            if (decompressed[i] == '\0') {
+                content_start = i + 1;
+                break;
+            }
+        }
+        // std::cout<<content_start<<std::endl;
+        std::cout.write(decompressed.data() + content_start, decompressed.size() - content_start);
+
+    }
+    else {
         std::cerr << "Unknown command " << command << '\n';
         return EXIT_FAILURE;
     }
