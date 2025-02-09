@@ -178,8 +178,6 @@ int main(int argc, char *argv[])
             return EXIT_FAILURE;
         }
 
-        // std::cout<<compressed_data.data()<<std::endl;
-
         object_file.write(compressed_data.data(), compressed_size);
         std::cout.write(hash.data(), hash.size());
         object_file.close();
