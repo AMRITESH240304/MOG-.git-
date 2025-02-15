@@ -169,17 +169,30 @@ int main(int argc, char *argv[])
             }
         }
 
-        size_t i = content_start;
-        while (i < decompressed.size()) {
-            size_t j = i;
-            while (decompressed[j] != '\0') {
-                j++;
-            }
-            std::cout.write(decompressed.data() + i, j - i);
-            std::cout << '\n';
-            i = j + 21;
+        size_t pos = content_start;
+
+        while (pos < decompressed.size()){
+            size_t mode_end = pos;
+            while (mode_end < decompressed.size() && decompressed[mode_end] != ' ')
+                mode_end++;
+
+            if (mode_end >= decompressed.size())
+                break;
+
+            pos = mode_end + 1; 
+
+            size_t name_end = pos;
+            while (name_end < decompressed.size() && decompressed[name_end] != '\0')
+                name_end++;
+
+            if (name_end >= decompressed.size())
+                break;
+
+            std::string file_name(decompressed.data() + pos, name_end - pos);
+            std::cout << file_name << std::endl;
+
+            pos = name_end + 21; 
         }
-        
     }
     else {
         std::cerr << "Unknown command " << command << '\n';
