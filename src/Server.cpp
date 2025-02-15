@@ -48,42 +48,6 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
-    // Uncomment this block to pass the first stage
-    //
-    // if (argc < 2) {
-    //     std::cerr << "No command provided.\n";
-    //     return EXIT_FAILURE;
-    // }
-    //
-    // std::string command = argv[1];
-    //
-    // if (command == "init") {
-    //     try {
-    //         std::filesystem::create_directory(".git");
-    //         std::filesystem::create_directory(".git/objects");
-    //         std::filesystem::create_directory(".git/refs");
-    //
-    //         std::ofstream headFile(".git/HEAD");
-    //         if (headFile.is_open()) {
-    //             headFile << "ref: refs/heads/main\n";
-    //             headFile.close();
-    //         } else {
-    //             std::cerr << "Failed to create .git/HEAD file.\n";
-    //             return EXIT_FAILURE;
-    //         }
-    //
-    //         std::cout << "Initialized git directory\n";
-    //     } catch (const std::filesystem::filesystem_error& e) {
-    //         std::cerr << e.what() << '\n';
-    //         return EXIT_FAILURE;
-    //     }
-    // } else {
-    //     std::cerr << "Unknown command " << command << '\n';
-    //     return EXIT_FAILURE;
-    // }
-    //
-    // return EXIT_SUCCESS;
-
     std::string command = argv[1];
     if (command == "init") {
         try {
@@ -181,6 +145,41 @@ int main(int argc, char *argv[])
         object_file.write(compressed_data.data(), compressed_size);
         std::cout.write(hash.data(), hash.size());
         object_file.close();
+    }
+    else if(command == "ls-tree"){
+        if (argc < 4 || std::string(argv[2]) != "--name-only") {
+            std::cerr << "Invalid parameters for ls-tree command.\n";
+            return EXIT_FAILURE;
+        }
+
+        std::string tree_hash = argv[3];
+        std::string object_path = ".git/objects/" + tree_hash.substr(0,2) + "/" + tree_hash.substr(2);
+        // if(!file.is_open()){
+        //     std::cerr<<"Failed to open file "<<object_path<<std::endl;
+        //     return EXIT_FAILURE;
+        // }
+
+        std::vector<char> decompressed = decompresses_file(object_path); 
+        
+        size_t content_start = 0;
+        for (size_t i = 0; i < decompressed.size(); i++) {
+            if (decompressed[i] == '\0') {
+                content_start = i + 1;
+                break;
+            }
+        }
+
+        size_t i = content_start;
+        while (i < decompressed.size()) {
+            size_t j = i;
+            while (decompressed[j] != '\0') {
+                j++;
+            }
+            std::cout.write(decompressed.data() + i, j - i);
+            std::cout << '\n';
+            i = j + 21;
+        }
+        
     }
     else {
         std::cerr << "Unknown command " << command << '\n';
